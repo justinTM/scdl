@@ -520,8 +520,8 @@ def allow_download(track, title):
         return True
 
     # Already downloaded
-    archive_fn = arguments.get('--download-archive')
-    if archive_fn is not None and in_download_archive(track):
+    archive_filename = arguments.get('--download-archive')
+    if archive_filename is not None and in_download_archive(track):
         if arguments['-c'] or arguments['--remove']:
             logger.info('Track "{0}" already downloaded.'.format(title))
             return False
@@ -536,10 +536,10 @@ def in_download_archive(track):
     Return True if a track_id exists in the download archive
     """
     global arguments
-    archive_fn = arguments.get('--download-archive')
+    archive_filename = arguments.get('--download-archive')
     try:
-        with open(archive_fn, 'a+', encoding='utf-8') as file:
-            logger.debug('Contents of {0}:'.format(archive_fn))
+        with open(archive_filename, 'a+', encoding='utf-8') as file:
+            logger.debug('Contents of {0}:'.format(archive_filename))
             file.seek(0)
             track_id = '{0}'.format(track['id'])
             for line in file:
@@ -559,9 +559,9 @@ def record_download_archive(track):
     Write the track_id in the download archive
     """
     global arguments
-    archive_fn = arguments.get('--download-archive')
+    archive_filename = arguments.get('--download-archive')
     try:
-        with open(archive_fn, 'a', encoding='utf-8') as file:
+        with open(archive_filename, 'a', encoding='utf-8') as file:
             file.write('{0}'.format(track['id'])+'\n')
     except IOError as ioe:
         logger.error('Error trying to write to download archive...')
