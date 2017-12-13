@@ -167,7 +167,7 @@ def main():
 
     if arguments['--download-archive']:
         logger.debug('HELLO WORLD')
-        read_download_archive()
+
 
     if arguments['-l']:
         parse_url(arguments['-l'])
@@ -421,12 +421,12 @@ def download_track(track, playlist_name=None, playlist_file=None):
     """
     global arguments
 
+    read_download_archive()
+    if not allow_download(track): return
+
     title = track['title']
     title = title.encode('utf-8', 'ignore').decode('utf8')
-    if not allow_download(track, title): return
     logger.info('Downloading {0}'.format(title))
-
-    read_download_archive()
 
     r = None
     # filename
@@ -512,17 +512,21 @@ def download_track(track, playlist_name=None, playlist_file=None):
 
     logger.info('{0} Downloaded.\n'.format(filename))
 
-    track_id = '{0}'.format(track['id'])
-    if track_id not in downloaded_track_ids:
-        downloaded_track_ids.append(track)
-        record_download_archive(track)
+    downloaded_track_ids.append(track)
+    record_download_archive(track)
+    logger.debug('downloaded_track_ids looks like:')
+    for thing in downloaded_track_ids:
+        logger.debug('\t"{0}"'.format(thing))
 
 
-def allow_download(track, title):
+def allow_download(track):
     """
     Returns True if the file should be downloaded
     """
     global arguments
+
+    title = track['title']
+    title = title.encode('utf-8', 'ignore').decode('utf8')
 
     # Not streamable
     if not track['streamable']:
@@ -547,27 +551,19 @@ def read_download_archive():
     """
     global arguments
 
-    logger.debug('Contents of "downloaded_track_ids" BEFORE read:')
-    for trackid in downloaded_track_ids:
-        logger.debug('\t"'+trackid.strip()+'"')
-
     archive_filename = arguments.get('--download-archive')
     try:
         with open(archive_filename, 'a+', encoding='utf-8') as file:
-            logger.debug('Contents of {0}:'.format(archive_filename))
             file.seek(0)
+            logger.debug('Reading download archive to list...')
             for line in file:
-                logger.debug('\t"'+line.strip()+'"')
-                if line.strip not in downloaded_track_ids:
+                if line.strip() not in downloaded_track_ids:
                     downloaded_track_ids.append(line.strip())
+                    logger.debug('adding "{0}" to archive file...'.format(line.strip()))
 
     except IOError as ioe:
         logger.error('Error trying to read download archive...')
         logger.debug(ioe)
-
-    logger.debug('Contents of "downloaded_track_ids" AFTER read:')
-    for stuff in downloaded_track_ids:
-        logger.debug('\t"'+stuff.strip()+'"')
 
 
 def in_download_archive(track):
