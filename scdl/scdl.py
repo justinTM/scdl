@@ -96,6 +96,7 @@ url = {
 client = client.Client()
 
 fileToKeep = []
+downloaded_track_ids = []
 
 def main():
     """
@@ -163,6 +164,10 @@ def main():
             logger.error('Invalid path in arguments...')
             sys.exit()
     logger.debug('Downloading to '+os.getcwd()+'...')
+
+    if arguments['--download-archive']:
+        logger.debug('HELLO WORLD')
+        read_download_archive()
 
     if arguments['-l']:
         parse_url(arguments['-l'])
@@ -418,9 +423,10 @@ def download_track(track, playlist_name=None, playlist_file=None):
 
     title = track['title']
     title = title.encode('utf-8', 'ignore').decode('utf8')
-    if not allow_download(track, title):
-        return
+    if not allow_download(track, title): return
     logger.info('Downloading {0}'.format(title))
+
+    read_download_archive()
 
     r = None
     # filename
@@ -505,7 +511,11 @@ def download_track(track, playlist_name=None, playlist_file=None):
     try_utime(filename,filetime)
 
     logger.info('{0} Downloaded.\n'.format(filename))
-    record_download_archive(track)
+
+    track_id = '{0}'.format(track['id'])
+    if track_id not in downloaded_track_ids:
+        downloaded_track_ids.append(track)
+        record_download_archive(track)
 
 
 def allow_download(track, title):
@@ -521,7 +531,7 @@ def allow_download(track, title):
 
     # Already downloaded
     archive_filename = arguments.get('--download-archive')
-    if archive_filename is not None and in_download_archive(track):
+    if archive_filename and in_download_archive(track):
         if arguments['-c'] or arguments['--remove']:
             logger.info('Track "{0}" already downloaded.'.format(title))
             return False
@@ -531,38 +541,57 @@ def allow_download(track, title):
     return True
 
 
-def in_download_archive(track):
+def read_download_archive():
     """
-    Return True if a track_id exists in the download archive
+    Stores the track IDs in archive to variable 'downloaded_track_ids'
     """
     global arguments
+
+    logger.debug('Contents of "downloaded_track_ids" BEFORE read:')
+    for trackid in downloaded_track_ids:
+        logger.debug('\t"'+trackid.strip()+'"')
+
     archive_filename = arguments.get('--download-archive')
     try:
         with open(archive_filename, 'a+', encoding='utf-8') as file:
             logger.debug('Contents of {0}:'.format(archive_filename))
             file.seek(0)
-            track_id = '{0}'.format(track['id'])
             for line in file:
-                logger.debug('"'+line.strip()+'"')
-                if line.strip() == track_id:
-                    return True
-                else:
-                    logger.debug('"{0}" is apparently != "{1}"'.format(line.strip(), track['id']))
+                logger.debug('\t"'+line.strip()+'"')
+                if line.strip not in downloaded_track_ids:
+                    downloaded_track_ids.append(line.strip())
+
     except IOError as ioe:
         logger.error('Error trying to read download archive...')
         logger.debug(ioe)
-    return False
+
+    logger.debug('Contents of "downloaded_track_ids" AFTER read:')
+    for stuff in downloaded_track_ids:
+        logger.debug('\t"'+stuff.strip()+'"')
+
+
+def in_download_archive(track):
+    """
+    Returns True if a track_id exists in the download archive
+    """
+    track_id = '{0}'.format(track['id'])
+    return True if track_id in downloaded_track_ids else False
 
 
 def record_download_archive(track):
     """
-    Write the track_id in the download archive
+    Writes the (updated) 'downloaded_track_ids' list to the archive file
     """
     global arguments
+    if not arguments['--download-archive']: return
+    track_id = '{0}'.format(track['id'])
+    logger.debug('Writing "{0}" to download archive...'.format(track_id))
     archive_filename = arguments.get('--download-archive')
     try:
-        with open(archive_filename, 'a', encoding='utf-8') as file:
-            file.write('{0}'.format(track['id'])+'\n')
+        with open(archive_filename, 'a+', encoding='utf-8') as file:
+            if track_id not in file:
+                file.write(track_id+'\n')
+
     except IOError as ioe:
         logger.error('Error trying to write to download archive...')
         logger.debug(ioe)
